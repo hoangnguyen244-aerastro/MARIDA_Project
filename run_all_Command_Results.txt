@@ -1,0 +1,272 @@
+>> run_all
+
+========================================================
+   WAVELET-SVM ANOMALY DETECTION FOR SATELLITE IMAGERY   
+                   Complete Pipeline                     
+========================================================
+
+
+========================================
+STEP 1: Filtering MARIDA Dataset
+========================================
+
+Found 63 scene directories
+
+Scanning images...
+  Processed 50 masks... (Normal: 19, Anomaly: 16)
+  Processed 100 masks... (Normal: 35, Anomaly: 31)
+  Processed 150 masks... (Normal: 49, Anomaly: 42)
+  Processed 200 masks... (Normal: 55, Anomaly: 59)
+  Processed 250 masks... (Normal: 71, Anomaly: 72)
+  Processed 300 masks... (Normal: 82, Anomaly: 93)
+  Processed 350 masks... (Normal: 90, Anomaly: 117)
+  Processed 400 masks... (Normal: 104, Anomaly: 136)
+  Processed 450 masks... (Normal: 116, Anomaly: 164)
+  Processed 500 masks... (Normal: 128, Anomaly: 196)
+  Processed 550 masks... (Normal: 145, Anomaly: 213)
+  Processed 600 masks... (Normal: 162, Anomaly: 230)
+  Processed 650 masks... (Normal: 180, Anomaly: 250)
+  Processed 700 masks... (Normal: 202, Anomaly: 268)
+  Processed 750 masks... (Normal: 222, Anomaly: 285)
+  Processed 800 masks... (Normal: 234, Anomaly: 309)
+  Processed 850 masks... (Normal: 248, Anomaly: 331)
+  Processed 900 masks... (Normal: 267, Anomaly: 351)
+  Processed 950 masks... (Normal: 283, Anomaly: 367)
+  Processed 1000 masks... (Normal: 301, Anomaly: 390)
+  Processed 1050 masks... (Normal: 325, Anomaly: 402)
+  Processed 1100 masks... (Normal: 343, Anomaly: 418)
+  Processed 1150 masks... (Normal: 363, Anomaly: 444)
+  Processed 1200 masks... (Normal: 373, Anomaly: 466)
+  Processed 1250 masks... (Normal: 380, Anomaly: 480)
+  Processed 1300 masks... (Normal: 394, Anomaly: 508)
+  Processed 1350 masks... (Normal: 423, Anomaly: 525)
+
+========== SCAN COMPLETE ==========
+Total masks checked: 1381
+NORMAL images found: 440
+ANOMALY images found: 536
+
+Limiting to 200 samples per class for faster processing
+
+After balancing: 200 NORMAL, 200 ANOMALY
+
+Saved ../data/file_lists.mat
+
+Sample NORMAL image:
+  ..\raw_data\MARIDA\patches\S2_1-12-19_48MYU\S2_1-12-19_48MYU_1.tif
+Sample ANOMALY image:
+  ..\raw_data\MARIDA\patches\S2_1-12-19_48MYU\S2_1-12-19_48MYU_0.tif
+
+
+========================================
+STEP 2: Extracting Wavelet Features
+========================================
+
+Normal images: 200
+Anomaly images: 200
+Total images to process: 400
+
+Using wavelet: db4
+
+[1/2] Processing NORMAL images...
+  20/200
+  40/200
+  60/200
+  80/200
+  100/200
+  120/200
+  140/200
+  160/200
+  180/200
+  200/200
+
+[2/2] Processing ANOMALY images...
+  20/200
+  40/200
+  60/200
+  80/200
+  100/200
+  120/200
+  140/200
+  160/200
+  WARNING: Invalid features for ..\raw_data\MARIDA\patches\S2_18-9-20_16PCC\S2_18-9-20_16PCC_47.tif, using zeros
+  180/200
+  WARNING: Invalid features for ..\raw_data\MARIDA\patches\S2_18-9-20_16PCC\S2_18-9-20_16PCC_48.tif, using zeros
+  200/200
+
+========== EXTRACTION COMPLETE ==========
+Valid samples: 398
+Feature dimension: 18
+Class distribution: Normal=200, Anomaly=198
+
+Saved ../data/features_data.mat
+
+
+========================================
+STEP 3: Training SVM Classifier
+========================================
+
+Dataset: 398 samples, 18 features
+Class distribution: Normal=200, Anomaly=198
+
+Split: 278 training, 120 test images
+
+Normalizing features...
+
+Performing grid search for optimal parameters...
+  C=0.1, gamma=0.01 -> CV accuracy = 50.36%
+  C=0.1, gamma=0.10 -> CV accuracy = 50.36%
+  C=0.1, gamma=1.00 -> CV accuracy = 67.99%
+  C=0.1, gamma=10.00 -> CV accuracy = 50.36%
+  C=1.0, gamma=0.01 -> CV accuracy = 50.36%
+  C=1.0, gamma=0.10 -> CV accuracy = 66.91%
+  C=1.0, gamma=1.00 -> CV accuracy = 72.66%
+  C=1.0, gamma=10.00 -> CV accuracy = 61.87%
+  C=10.0, gamma=0.01 -> CV accuracy = 50.36%
+  C=10.0, gamma=0.10 -> CV accuracy = 65.11%
+  C=10.0, gamma=1.00 -> CV accuracy = 72.30%
+  C=10.0, gamma=10.00 -> CV accuracy = 62.95%
+  C=100.0, gamma=0.01 -> CV accuracy = 50.36%
+  C=100.0, gamma=0.10 -> CV accuracy = 65.47%
+  C=100.0, gamma=1.00 -> CV accuracy = 73.02%
+  C=100.0, gamma=10.00 -> CV accuracy = 68.35%
+
+Best parameters: C = 100.0, gamma = 1.00
+Best CV accuracy: 73.02%
+
+Training final SVM model...
+
+========================================
+RESULTS
+========================================
+Test set size: 120 images
+Accuracy:      73.33%
+Precision:     0.7188
+Recall:        0.7667
+F1-score:      0.7419
+
+Confusion Matrix:
+                Predicted
+                NORMAL  ANOMALY
+Actual NORMAL     42       18
+       ANOMALY     14       46
+
+Saved ../models/svm_model.mat
+
+
+========================================
+STEP 4: Detailed Evaluation
+========================================
+
+========== OVERALL PERFORMANCE ==========
+Total samples: 398
+Accuracy:      90.45%
+Precision:     0.9082
+Recall:        0.8990
+F1-score:      0.9036
+AUC-ROC:       0.9482
+
+========== FEATURE ANALYSIS ==========
+Top 5 most discriminative features:
+  Feature 15: mean difference = 0.2434
+  Feature 14: mean difference = 0.2055
+  Feature 3: mean difference = 0.2051
+  Feature 17: mean difference = 0.1590
+  Feature 18: mean difference = 0.1410
+
+Saved ../results/evaluation_results.mat
+
+=== Running Step 5: Wavelet Comparison ===
+
+========================================
+STEP 5: Comparing Wavelet Families
+========================================
+
+Using 100 normal, 100 anomaly images for comparison
+
+>>> Testing wavelet: db4 <<<
+  Normal: 20/100
+  Normal: 40/100
+  Normal: 60/100
+  Normal: 80/100
+  Normal: 100/100
+  Anomaly: 20/100
+  Anomaly: 40/100
+  Anomaly: 60/100
+  Anomaly: 80/100
+  Anomaly: 100/100
+  Accuracy: 61.67%
+
+>>> Testing wavelet: sym4 <<<
+  Normal: 20/100
+  Normal: 40/100
+  Normal: 60/100
+  Normal: 80/100
+  Normal: 100/100
+  Anomaly: 20/100
+  Anomaly: 40/100
+  Anomaly: 60/100
+  Anomaly: 80/100
+  Anomaly: 100/100
+  Accuracy: 65.00%
+
+>>> Testing wavelet: bior3.5 <<<
+  Normal: 20/100
+  Normal: 40/100
+  Normal: 60/100
+  Normal: 80/100
+  Normal: 100/100
+  Anomaly: 20/100
+  Anomaly: 40/100
+  Anomaly: 60/100
+  Anomaly: 80/100
+  Anomaly: 100/100
+  Accuracy: 61.67%
+
+>>> Testing wavelet: coif2 <<<
+  Normal: 20/100
+  Normal: 40/100
+  Normal: 60/100
+  Normal: 80/100
+  Normal: 100/100
+  Anomaly: 20/100
+  Anomaly: 40/100
+  Anomaly: 60/100
+  Anomaly: 80/100
+  Anomaly: 100/100
+  Accuracy: 66.67%
+
+>>> Testing wavelet: haar <<<
+  Normal: 20/100
+  Normal: 40/100
+  Normal: 60/100
+  Normal: 80/100
+  Normal: 100/100
+  Anomaly: 20/100
+  Anomaly: 40/100
+  Anomaly: 60/100
+  Anomaly: 80/100
+  Anomaly: 100/100
+  Accuracy: 65.00%
+
+========================================
+WAVELET COMPARISON RESULTS
+========================================
+Wavelet      | Accuracy  
+-------------------------------
+db4          | 61.67    %
+sym4         | 65.00    %
+bior3.5      | 61.67    %
+coif2        | 66.67    %
+haar         | 65.00    %
+
+>>> BEST WAVELET: coif2 (66.67%) <<<
+
+Saved Excel file: ../results/wavelet_comparison.xls
+Saved ../results/wavelet_comparison.mat
+
+========================================================
+PIPELINE COMPLETED SUCCESSFULLY!
+Total execution time: 102.80 seconds
+========================================================
+>> 

@@ -4,16 +4,7 @@ Project Structure
 
 
 
-MARIDA\_Project:
--raw\_data
--code
--data
--models
-
-\-results
--reports
-
-README.md
+MARIDA\_Project: raw\_data, code, data, models, results, reports, README.md
 
 =================================================================
 HOW TO RUN ?
@@ -42,9 +33,8 @@ PIPELINE STEPS
 
 RESULTS
 
-* Best wavelet: db4
-* Accuracy: \~88-90%
-* AUC-ROC: \~0.92
+* Best wavelet: coif2
+* Accuracy: \~66,7%
 
 =================================================================
 

@@ -10,6 +10,7 @@ MARIDA\_Project: raw\_data, code, data, models, results, reports, README.md
 HOW TO RUN ?
 
 1. Open MATLAB in this directory
+
 2. Run file "run\_all.m" in MATLAB r2015b-> Files in folder (data, models, results) will be generated.
 If the file shows a path error
 -> go to the "code" folder
@@ -19,8 +20,11 @@ root\_path = 'E:\\SpbSUITD\\Semester2\\Neural-Network\\MARIDA\_Project\\raw\_dat
 or
 root\_path = '../raw\_data/MARIDA/';
 And change the following line of code to your computer's path.
+
 3. When you see files .mat and .xlsl in 3 folders.
-Run script "plot\_results.m" -> Generate the image of plots into "reports" folder.
+Run script "plot\_results.m" -> Generate the images of plots into "reports" folder.
+
+4. Run script "step6\_benchmark.m" -> Generate the image report of model size, training time into "reports" folder
 
 =================================================================
 PIPELINE STEPS
@@ -30,11 +34,6 @@ PIPELINE STEPS
 3. Train SVM with grid search (C, gamma)
 4. Evaluate (accuracy, precision, recall, F1, AUC)
 5. Compare wavelet families (db4, sym4, bior3.5, coif2, haar)
-
-RESULTS
-
-* Best wavelet: coif2
-* Accuracy: \~66,7%
 
 =================================================================
 

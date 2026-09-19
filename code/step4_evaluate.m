@@ -1,22 +1,19 @@
-%% step4_evaluate.m
-% Step 4: Detailed evaluation and visualization
+%% step4_evaluate.m (v4 - no data leakage)
+% Step 4: Detailed evaluation on TEST SET ONLY
 % Compatible with MATLAB R2015b
 
 function step4_evaluate()
     
     fprintf('\n========================================\n');
-    fprintf('STEP 4: Detailed Evaluation\n');
+    fprintf('STEP 4: Evaluation (TEST SET ONLY)\n');
     fprintf('========================================\n\n');
     
-    % Create results folder if not exists
     if ~exist('../results', 'dir')
         mkdir('../results');
     end
     
-    % Load model and data
     if ~exist('../models/svm_model.mat', 'file')
         fprintf('ERROR: ../models/svm_model.mat not found!\n');
-        fprintf('Please run step3_train_svm.m first.\n');
         return;
     end
     
@@ -25,65 +22,66 @@ function step4_evaluate()
         return;
     end
     
-    load('../models/svm_model.mat', 'final_svm', 'mu', 'sigma');
+    load('../models/svm_model.mat', 'final_svm', 'mu', 'sigma', 'test_idx');
     load('../data/features_data.mat', 'all_features', 'all_labels');
     
-    % Normalize all data
-    all_features_norm = bsxfun(@minus, all_features, mu);
-    all_features_norm = bsxfun(@rdivide, all_features_norm, sigma);
-    all_features_norm(isnan(all_features_norm)) = 0;
+    % ??? ONLY USE TEST SET (no data leakage) ???
+    X_test = all_features(test_idx, :);
+    Y_test = all_labels(test_idx);
     
-    % Get predictions for all samples
-    all_pred = predict(final_svm, all_features_norm);
+    % Normalize using training mu/sigma
+    X_test_norm = bsxfun(@minus, X_test, mu);
+    X_test_norm = bsxfun(@rdivide, X_test_norm, sigma);
+    X_test_norm(isnan(X_test_norm)) = 0;
     
-    % Calculate overall metrics
-    TP_all = sum(all_pred == 1 & all_labels == 1);
-    TN_all = sum(all_pred == 0 & all_labels == 0);
-    FP_all = sum(all_pred == 1 & all_labels == 0);
-    FN_all = sum(all_pred == 0 & all_labels == 1);
+    % Predict
+    Y_pred = predict(final_svm, X_test_norm);
+    [~, score] = predict(final_svm, X_test_norm);
     
-    accuracy_all = (TP_all + TN_all) / length(all_labels);
-    precision_all = TP_all / (TP_all + FP_all);
-    recall_all = TP_all / (TP_all + FN_all);
-    f1_all = 2 * precision_all * recall_all / (precision_all + recall_all);
+    % Metrics
+    TP = sum(Y_pred == 1 & Y_test == 1);
+    TN = sum(Y_pred == 0 & Y_test == 0);
+    FP = sum(Y_pred == 1 & Y_test == 0);
+    FN = sum(Y_pred == 0 & Y_test == 1);
     
-    % Calculate AUC-ROC
-    [~, score] = predict(final_svm, all_features_norm);
-    [~, ~, ~, auc] = perfcurve(all_labels, score(:,2), 1);
+    accuracy = (TP + TN) / length(Y_test);
+    precision = TP / (TP + FP);
+    recall = TP / (TP + FN);
+    f1 = 2 * precision * recall / (precision + recall);
     
-    fprintf('========== OVERALL PERFORMANCE ==========\n');
-    fprintf('Total samples: %d\n', length(all_labels));
-    fprintf('Accuracy:      %.2f%%\n', accuracy_all * 100);
-    fprintf('Precision:     %.4f\n', precision_all);
-    fprintf('Recall:        %.4f\n', recall_all);
-    fprintf('F1-score:      %.4f\n', f1_all);
-    fprintf('AUC-ROC:       %.4f\n', auc);
+    [~, ~, ~, auc] = perfcurve(Y_test, score(:,2), 1);
     
-    % Feature importance analysis
+    fprintf('========== TEST SET PERFORMANCE ==========\n');
+    fprintf('Test samples: %d\n', length(Y_test));
+    fprintf('Accuracy:  %.2f%%\n', accuracy * 100);
+    fprintf('Precision: %.4f\n', precision);
+    fprintf('Recall:    %.4f\n', recall);
+    fprintf('F1:        %.4f\n', f1);
+    fprintf('AUC-ROC:   %.4f\n', auc);
+    
+    % Save
+    results.accuracy = accuracy;
+    results.precision = precision;
+    results.recall = recall;
+    results.f1_score = f1;
+    results.auc = auc;
+    results.confusion_matrix = [TN, FP; FN, TP];
+    results.test_size = length(Y_test);
+    
+    save('../results/evaluation_results.mat', 'results');
+    fprintf('\nSaved ../results/evaluation_results.mat\n');
+    
+    % Feature importance (mean difference)
     fprintf('\n========== FEATURE ANALYSIS ==========\n');
-    
-    % Separate features by class
     normal_features = all_features(all_labels == 0, :);
     anomaly_features = all_features(all_labels == 1, :);
-    
-    % Calculate mean difference for each feature
     mean_diff = abs(mean(normal_features, 1) - mean(anomaly_features, 1));
     [sorted_diff, idx_sorted] = sort(mean_diff, 'descend');
     
     fprintf('Top 5 most discriminative features:\n');
     for i = 1:min(5, length(sorted_diff))
-        fprintf('  Feature %d: mean difference = %.4f\n', idx_sorted(i), sorted_diff(i));
+        fprintf('  Feature %d: mean difference = %.4f\n', ...
+            idx_sorted(i), sorted_diff(i));
     end
-    
-    % Save evaluation results
-    results.accuracy = accuracy_all;
-    results.precision = precision_all;
-    results.recall = recall_all;
-    results.f1_score = f1_all;
-    results.auc = auc;
-    results.confusion_matrix = [TN_all, FP_all; FN_all, TP_all];
-    
-    save('../results/evaluation_results.mat', 'results');
-    fprintf('\nSaved ../results/evaluation_results.mat\n');
     
 end

@@ -1,5 +1,6 @@
-%% wavelet_feature_extractor.m
-% Extract wavelet-based statistical features from an image
+%% wavelet_feature_extractor.m (v4 - 18 features)
+% Extract 18 wavelet-based statistical features from an image
+% Features: Energy, Entropy, Skewness from 6 coefficient matrices
 % Compatible with MATLAB R2015b
 
 function features = wavelet_feature_extractor(img_path, wavelet_name)
@@ -8,11 +9,9 @@ function features = wavelet_feature_extractor(img_path, wavelet_name)
     
     % Convert to grayscale if RGB
     if ndims(I) == 3
-        % Standard RGB to grayscale conversion
         I = 0.2989 * I(:,:,1) + 0.5870 * I(:,:,2) + 0.1140 * I(:,:,3);
     end
     
-    % Convert to double precision
     I = im2double(I);
     
     % 2-level Discrete Wavelet Transform
@@ -22,23 +21,23 @@ function features = wavelet_feature_extractor(img_path, wavelet_name)
     [H1, V1, D1] = detcoef2('all', C, S, 1);
     [H2, V2, D2] = detcoef2('all', C, S, 2);
     
-    % Collect all coefficient matrices
+    % 6 coefficient matrices
     coeff_cells = {H1, V1, D1, H2, V2, D2};
     
-    % Initialize feature vector
+    % ??? 18 features (6 matrices × 3 features) ???
     features = zeros(1, 18);
     feat_idx = 1;
     
-    % Process each coefficient matrix
     for k = 1:length(coeff_cells)
         coeff = coeff_cells{k};
         coeff_vec = coeff(:);
+        n = length(coeff_vec);
         
-        % Feature 1: Energy
+        % ---- Feature 1: Energy ----
         energy = sum(coeff_vec .^ 2);
         features(feat_idx) = energy;
         
-        % Feature 2: Entropy
+        % ---- Feature 2: Entropy (normalized energy entropy) ----
         p = abs(coeff_vec) / sum(abs(coeff_vec));
         p(p == 0) = [];
         if isempty(p)
@@ -48,8 +47,7 @@ function features = wavelet_feature_extractor(img_path, wavelet_name)
         end
         features(feat_idx + 1) = entropy_val;
         
-        % Feature 3: Skewness
-        n = length(coeff_vec);
+        % ---- Feature 3: Skewness ----
         if n < 3
             skewness_val = 0;
         else

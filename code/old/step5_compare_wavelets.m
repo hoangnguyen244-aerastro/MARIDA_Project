@@ -1,11 +1,11 @@
-%% step5_compare_wavelets.m (v4 - balanced grid search)
-% Step 5: Compare wavelet families on FULL dataset
+%% step5_compare_wavelets.m (FIXED - full dataset)
+% Step 5: Compare different wavelet families on FULL dataset
 % Compatible with MATLAB R2015b
 
 function step5_compare_wavelets()
     
     fprintf('\n========================================\n');
-    fprintf('STEP 5: Comparing Wavelet Families (v4)\n');
+    fprintf('STEP 5: Comparing Wavelet Families\n');
     fprintf('========================================\n\n');
     
     if ~exist('../results', 'dir')
@@ -22,6 +22,7 @@ function step5_compare_wavelets()
     wavelets = {'db4', 'sym4', 'bior3.5', 'coif2', 'haar'};
     num_wavelets = length(wavelets);
     
+    % ??? CHANGED: Use FULL dataset (no 100-sample limit) ???
     num_normal = length(normal_files);
     num_anomaly = length(anomaly_files);
     
@@ -39,25 +40,21 @@ function step5_compare_wavelets()
         all_labels = [];
         
         for i = 1:num_normal
-            if mod(i, 100) == 0
+            if mod(i, 50) == 0
                 fprintf('  Normal: %d/%d\n', i, num_normal);
             end
             features = wavelet_feature_extractor(normal_files{i}, wavelet);
             features = sign(features) .* log1p(abs(features));
-            features(isnan(features)) = 0;
-            features(isinf(features)) = 0;
             all_features = [all_features; features];
             all_labels = [all_labels; 0];
         end
         
         for i = 1:num_anomaly
-            if mod(i, 100) == 0
+            if mod(i, 50) == 0
                 fprintf('  Anomaly: %d/%d\n', i, num_anomaly);
             end
             features = wavelet_feature_extractor(anomaly_files{i}, wavelet);
             features = sign(features) .* log1p(abs(features));
-            features(isnan(features)) = 0;
-            features(isinf(features)) = 0;
             all_features = [all_features; features];
             all_labels = [all_labels; 1];
         end
@@ -87,39 +84,8 @@ function step5_compare_wavelets()
         X_train_norm(isnan(X_train_norm)) = 0;
         X_test_norm(isnan(X_test_norm)) = 0;
         
-        % ??? BALANCED GRID SEARCH ???
-        C_values = [0.1, 1, 10];
-        gamma_values = [0.01, 0.1, 1];
-        
-        best_acc = 0;
-        best_C = 1;
-        best_g = 0.1;
-        
-        for ci = 1:length(C_values)
-            for gi = 1:length(gamma_values)
-                try
-                    svm_temp = fitcsvm(X_train_norm, Y_train, ...
-                        'KernelFunction', 'rbf', ...
-                        'BoxConstraint', C_values(ci), ...
-                        'KernelScale', gamma_values(gi));
-                    Y_pred_temp = predict(svm_temp, X_test_norm);
-                    acc_temp = sum(Y_pred_temp == Y_test) / length(Y_test);
-                    
-                    if acc_temp > best_acc
-                        best_acc = acc_temp;
-                        best_C = C_values(ci);
-                        best_g = gamma_values(gi);
-                    end
-                catch
-                    continue;
-                end
-            end
-        end
-        
-        svm = fitcsvm(X_train_norm, Y_train, ...
-            'KernelFunction', 'rbf', ...
-            'BoxConstraint', best_C, ...
-            'KernelScale', best_g);
+        % Train SVM
+        svm = fitcsvm(X_train_norm, Y_train, 'KernelFunction', 'rbf');
         Y_pred = predict(svm, X_test_norm);
         
         acc = sum(Y_pred == Y_test) / length(Y_test);
@@ -127,16 +93,13 @@ function step5_compare_wavelets()
         
         results(w).wavelet = wavelet;
         results(w).accuracy = acc;
-        results(w).best_C = best_C;
-        results(w).best_gamma = best_g;
         
-        fprintf('  Accuracy: %.2f%% (C=%.3f, gamma=%.4f)\n', ...
-            acc * 100, best_C, best_g);
+        fprintf('  Accuracy: %.2f%%\n', acc * 100);
     end
     
     % Display
     fprintf('\n========================================\n');
-    fprintf('WAVELET COMPARISON RESULTS (v4)\n');
+    fprintf('WAVELET COMPARISON RESULTS (FULL)\n');
     fprintf('========================================\n');
     fprintf('%-12s | %-10s\n', 'Wavelet', 'Accuracy');
     fprintf('-------------------------------\n');

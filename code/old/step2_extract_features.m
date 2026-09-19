@@ -1,11 +1,13 @@
-%% step2_extract_features.m (v4 - 18 features)
-% Step 2: Extract 18 wavelet features from all images
+%% step2_extract_features.m (FIXED - 30 features)
+% Step 2: Extract wavelet features from all images
+% Features: Energy, Entropy, Skewness, Kurtosis, Spectral Slope 
+%           from 6 coefficient matrices (30 total)
 % Compatible with MATLAB R2015b
 
 function step2_extract_features()
     
     fprintf('\n========================================\n');
-    fprintf('STEP 2: Extracting Wavelet Features (18)\n');
+    fprintf('STEP 2: Extracting Wavelet Features (30)\n');
     fprintf('========================================\n\n');
     
     if ~exist('../data', 'dir')
@@ -30,8 +32,8 @@ function step2_extract_features()
     wavelet_name = 'db4';
     fprintf('\nUsing wavelet: %s\n', wavelet_name);
     
-    % ??? 18 FEATURES ???
-    NUM_FEATURES = 18;
+    % ??? CHANGED: 18 ? 30 ???
+    NUM_FEATURES = 30;
     all_features = zeros(total_samples, NUM_FEATURES);
     all_labels = zeros(total_samples, 1);
     
@@ -45,6 +47,8 @@ function step2_extract_features()
         
         try
             features = wavelet_feature_extractor(normal_files{i}, wavelet_name);
+            
+            % Log transformation for heavy-tailed features
             features = sign(features) .* log1p(abs(features));
             
             if any(isnan(features)) || any(isinf(features))

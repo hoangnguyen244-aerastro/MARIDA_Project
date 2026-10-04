@@ -1,5 +1,5 @@
 %% run_all.m
-% Master script - Wavelet-SVM Anomaly Detection (v4 - 18 features)
+% Master script - Wavelet-SVM Anomaly Detection (v5 - official MARIDA split)
 % Compatible with MATLAB R2015b
 
 function run_all()
@@ -7,7 +7,7 @@ function run_all()
     fprintf('\n');
     fprintf('========================================================\n');
     fprintf('   WAVELET-SVM ANOMALY DETECTION - FINAL PIPELINE      \n');
-    fprintf('              (18 features, 880 samples)                \n');
+    fprintf('       (18 features, official MARIDA split)                            \n');
     fprintf('========================================================\n');
     
     tic;
@@ -41,6 +41,9 @@ function run_all()
     
     % Step 6: Benchmark
     step6_benchmark();
+    
+    % Step 7: Compare lightweight classifier baselines
+    step7_compare_baselines();
     
     % Plot results
     plot_results();

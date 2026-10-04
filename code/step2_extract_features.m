@@ -90,14 +90,9 @@ function step2_extract_features()
     all_features = all_features(valid_rows, :);
     all_labels = all_labels(valid_rows);
     
-    % Z-score normalization
-    for j = 1:size(all_features, 2)
-        col_mean = mean(all_features(:, j));
-        col_std = std(all_features(:, j));
-        if col_std > 0
-            all_features(:, j) = (all_features(:, j) - col_mean) / col_std;
-        end
-    end
+    % IMPORTANT: do not normalize here. Normalization parameters must be
+    % estimated from development/training data only after the official split
+    % is applied (see step3_train_svm.m).
     
     fprintf('\n========== EXTRACTION COMPLETE ==========\n');
     fprintf('Valid samples: %d\n', size(all_features, 1));

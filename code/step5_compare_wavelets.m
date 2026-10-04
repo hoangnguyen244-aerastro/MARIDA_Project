@@ -64,4 +64,7 @@ function names=read_split(path)
     fid=fopen(path,'r'); if fid<0,error('Cannot open %s',path);end
     C=textscan(fid,'%s'); fclose(fid); names=C{1};
 end
-function id=file_id(path), [~,id,~]=fileparts(path); end
+function id=file_id(path)
+    [~,id,~]=fileparts(path);
+    if length(id) >= 3 && strcmp(id(1:3),'S2_'), id=id(4:end); end
+end

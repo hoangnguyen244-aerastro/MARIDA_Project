@@ -1,0 +1,2 @@
+Representation,Wavelet,Dimensions,Classifier,C,KernelScale,N_Test,TN,FP,FN,TP,Accuracy,Balanced_Accuracy,Precision,Recall,Specificity,F1,AUC
+red_665,db4,18,RBF-SVM,10,1,230,70,41,32,87,0.682609,0.680862,0.679688,0.731092,0.630631,0.704453,0.733894

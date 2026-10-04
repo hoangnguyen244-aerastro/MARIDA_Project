@@ -22,7 +22,7 @@ function step4_evaluate()
         return;
     end
     
-    load('../models/svm_model.mat', 'final_svm', 'mu', 'sigma', 'test_idx');
+    load('../models/svm_model.mat', 'final_svm', 'mu', 'sigma', 'test_idx', 'dev_idx');
     load('../data/features_data.mat', 'all_features', 'all_labels');
     
     % ??? ONLY USE TEST SET (no data leakage) ???
@@ -73,12 +73,16 @@ function step4_evaluate()
     
     % Feature importance (mean difference)
     fprintf('\n========== FEATURE ANALYSIS ==========\n');
-    normal_features = all_features(all_labels == 0, :);
-    anomaly_features = all_features(all_labels == 1, :);
+    % Descriptive feature analysis on DEVELOPMENT DATA ONLY.
+    % The held-out test set must not influence feature ranking/interpretation.
+    dev_features = all_features(dev_idx, :);
+    dev_labels = all_labels(dev_idx);
+    normal_features = dev_features(dev_labels == 0, :);
+    anomaly_features = dev_features(dev_labels == 1, :);
     mean_diff = abs(mean(normal_features, 1) - mean(anomaly_features, 1));
     [sorted_diff, idx_sorted] = sort(mean_diff, 'descend');
     
-    fprintf('Top 5 most discriminative features:\n');
+    fprintf('Top 5 features by development-set mean difference:\n');
     for i = 1:min(5, length(sorted_diff))
         fprintf('  Feature %d: mean difference = %.4f\n', ...
             idx_sorted(i), sorted_diff(i));

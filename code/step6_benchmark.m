@@ -43,7 +43,7 @@ function step6_benchmark()
     fprintf('\n[3/3] Measuring inference time...\n');
     
     inference_times_ms = zeros(num_images, 1);
-    wavelet_name = 'db4';
+    wavelet_name = 'db4'; % benchmark the deployed main model; keep synchronized with step3
     
     for i = 1:num_images
         img_path = test_files{i};
@@ -52,7 +52,7 @@ function step6_benchmark()
         features = wavelet_feature_extractor(img_path, wavelet_name);
         features = sign(features) .* log1p(abs(features));
         features_norm = (features - mu) ./ sigma;
-        features_norm(isnan(features_norm)) = 0;
+        features_norm(~isfinite(features_norm)) = 0;
         label = predict(final_svm, features_norm);
         elapsed_sec = toc(t_start);
         

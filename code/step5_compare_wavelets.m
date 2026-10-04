@@ -12,7 +12,10 @@ function step5_compare_wavelets()
     if any((ismember(ids,tr)+ismember(ids,va)+ismember(ids,te))>1), error('Overlapping official splits.'); end
 
     C_values=[0.1 1 10 100]; scale_values=[0.01 0.1 1 10];
-    results=struct();
+    results=repmat(struct('wavelet','','accuracy',NaN,'precision',NaN, ...
+        'recall',NaN,'f1',NaN,'auc',NaN,'best_C',NaN, ...
+        'best_KernelScale',NaN,'cv_accuracy',NaN,'n_dev',0,'n_test',0), ...
+        1,numel(wavelets));
     for w=1:numel(wavelets)
         F=zeros(numel(files),18); valid=true(numel(files),1);
         for i=1:numel(files)

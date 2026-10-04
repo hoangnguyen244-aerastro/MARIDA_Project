@@ -86,9 +86,11 @@ function step2_extract_features()
     end
     
     % Cleanup
+    all_files = [normal_files(:); anomaly_files(:)];
     valid_rows = any(all_features ~= 0, 2);
     all_features = all_features(valid_rows, :);
     all_labels = all_labels(valid_rows);
+    valid_files = all_files(valid_rows);
     
     % IMPORTANT: do not normalize here. Normalization parameters must be
     % estimated from development/training data only after the official split
@@ -100,7 +102,7 @@ function step2_extract_features()
     fprintf('Class distribution: Normal=%d, Anomaly=%d\n', ...
         sum(all_labels == 0), sum(all_labels == 1));
     
-    save('../data/features_data.mat', 'all_features', 'all_labels', 'wavelet_name');
+    save('../data/features_data.mat', 'all_features', 'all_labels', 'valid_files', 'wavelet_name');
     fprintf('\nSaved ../data/features_data.mat\n');
     
 end

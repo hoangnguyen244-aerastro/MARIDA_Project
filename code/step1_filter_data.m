@@ -1,5 +1,5 @@
-%% step1_filter_data.m (v4 - FULL MARIDA)
-% Step 1: Filter MARIDA dataset - FULL DATASET (no 200-sample limit)
+%% step1_filter_data.m (v5 - FULL MARIDA, NATURAL CLASS DISTRIBUTION)
+% Step 1: Filter MARIDA dataset without global class balancing.
 % Normal: any image containing water (class 7)
 % Anomaly: any image containing debris (class 1) OR ship (class 5)
 % Compatible with MATLAB R2015b
@@ -84,19 +84,12 @@ function step1_filter_data()
         return;
     end
     
-    % Balance by taking ALL samples from the smaller class
-    num_samples = min(num_normal, num_anomaly);
-    
-    rng(42);
-    normal_files = normal_files(randperm(num_normal));
-    anomaly_files = anomaly_files(randperm(num_anomaly));
-    
-    normal_files = normal_files(1:num_samples);
-    anomaly_files = anomaly_files(1:num_samples);
-    
-    fprintf('\nAfter balancing: %d NORMAL, %d ANOMALY (total = %d)\n', ...
-        length(normal_files), length(anomaly_files), 2*num_samples);
-    
+    % Preserve the natural eligible class distribution.
+    % Imbalance handling, if ever needed, belongs only inside development/training.
+    % The official test set must never be undersampled based on its labels.
+    fprintf('\nKeeping natural distribution: %d NORMAL, %d ANOMALY (total = %d)\n', ...
+        length(normal_files), length(anomaly_files), length(normal_files)+length(anomaly_files));
+
     if ~exist('../data', 'dir')
         mkdir('../data');
     end

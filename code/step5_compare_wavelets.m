@@ -1,180 +1,67 @@
-%% step5_compare_wavelets.m (v4 - balanced grid search)
-% Step 5: Compare wavelet families on FULL dataset
-% Compatible with MATLAB R2015b
-
+%% step5_compare_wavelets.m (v5 - official split, no test-set tuning)
 function step5_compare_wavelets()
-    
-    fprintf('\n========================================\n');
-    fprintf('STEP 5: Comparing Wavelet Families (v4)\n');
-    fprintf('========================================\n\n');
-    
-    if ~exist('../results', 'dir')
-        mkdir('../results');
-    end
-    
-    if ~exist('../data/file_lists.mat', 'file')
-        fprintf('ERROR: ../data/file_lists.mat not found!\n');
-        return;
-    end
-    
-    load('../data/file_lists.mat', 'normal_files', 'anomaly_files');
-    
-    wavelets = {'db4', 'sym4', 'bior3.5', 'coif2', 'haar'};
-    num_wavelets = length(wavelets);
-    
-    num_normal = length(normal_files);
-    num_anomaly = length(anomaly_files);
-    
-    fprintf('Using FULL dataset: %d normal, %d anomaly\n', ...
-        num_normal, num_anomaly);
-    
-    results = struct();
-    all_accuracies = zeros(1, num_wavelets);
-    
-    for w = 1:num_wavelets
-        wavelet = wavelets{w};
-        fprintf('\n>>> Testing wavelet: %s <<<\n', wavelet);
-        
-        all_features = [];
-        all_labels = [];
-        
-        for i = 1:num_normal
-            if mod(i, 100) == 0
-                fprintf('  Normal: %d/%d\n', i, num_normal);
-            end
-            features = wavelet_feature_extractor(normal_files{i}, wavelet);
-            features = sign(features) .* log1p(abs(features));
-            features(isnan(features)) = 0;
-            features(isinf(features)) = 0;
-            all_features = [all_features; features];
-            all_labels = [all_labels; 0];
-        end
-        
-        for i = 1:num_anomaly
-            if mod(i, 100) == 0
-                fprintf('  Anomaly: %d/%d\n', i, num_anomaly);
-            end
-            features = wavelet_feature_extractor(anomaly_files{i}, wavelet);
-            features = sign(features) .* log1p(abs(features));
-            features(isnan(features)) = 0;
-            features(isinf(features)) = 0;
-            all_features = [all_features; features];
-            all_labels = [all_labels; 1];
-        end
-        
-        % Train/test split
-        rng(42);
-        n = size(all_features, 1);
-        indices = randperm(n);
-        train_idx = indices(1:floor(0.7*n));
-        test_idx = indices(floor(0.7*n)+1:end);
-        
-        X_train = all_features(train_idx, :);
-        Y_train = all_labels(train_idx);
-        X_test = all_features(test_idx, :);
-        Y_test = all_labels(test_idx);
-        
-        % Normalize
-        mu = mean(X_train, 1);
-        sigma = std(X_train, 0, 1);
-        sigma(sigma == 0) = 1;
-        
-        X_train_norm = bsxfun(@minus, X_train, mu);
-        X_train_norm = bsxfun(@rdivide, X_train_norm, sigma);
-        X_test_norm = bsxfun(@minus, X_test, mu);
-        X_test_norm = bsxfun(@rdivide, X_test_norm, sigma);
-        
-        X_train_norm(isnan(X_train_norm)) = 0;
-        X_test_norm(isnan(X_test_norm)) = 0;
-        
-        % ??? BALANCED GRID SEARCH ???
-        C_values = [0.1, 1, 10];
-        gamma_values = [0.01, 0.1, 1];
-        
-        best_acc = 0;
-        best_C = 1;
-        best_g = 0.1;
-        
-        for ci = 1:length(C_values)
-            for gi = 1:length(gamma_values)
-                try
-                    svm_temp = fitcsvm(X_train_norm, Y_train, ...
-                        'KernelFunction', 'rbf', ...
-                        'BoxConstraint', C_values(ci), ...
-                        'KernelScale', gamma_values(gi));
-                    Y_pred_temp = predict(svm_temp, X_test_norm);
-                    acc_temp = sum(Y_pred_temp == Y_test) / length(Y_test);
-                    
-                    if acc_temp > best_acc
-                        best_acc = acc_temp;
-                        best_C = C_values(ci);
-                        best_g = gamma_values(gi);
-                    end
-                catch
-                    continue;
-                end
+    load('../data/file_lists.mat','normal_files','anomaly_files');
+    wavelets={'db4','sym4','bior3.5','coif2','haar'};
+    files=[normal_files(:); anomaly_files(:)];
+    labels=[zeros(numel(normal_files),1); ones(numel(anomaly_files),1)];
+    ids=cellfun(@file_id,files,'UniformOutput',false);
+    tr=read_split('../raw_data/MARIDA/splits/train_X.txt');
+    va=read_split('../raw_data/MARIDA/splits/val_X.txt');
+    te=read_split('../raw_data/MARIDA/splits/test_X.txt');
+    is_dev=ismember(ids,tr)|ismember(ids,va); is_test=ismember(ids,te);
+    if any((ismember(ids,tr)+ismember(ids,va)+ismember(ids,te))>1), error('Overlapping official splits.'); end
+
+    C_values=[0.1 1 10 100]; scale_values=[0.01 0.1 1 10];
+    results=struct();
+    for w=1:numel(wavelets)
+        F=zeros(numel(files),18); valid=true(numel(files),1);
+        for i=1:numel(files)
+            try
+                x=wavelet_feature_extractor(files{i},wavelets{w});
+                x=sign(x).*log1p(abs(x));
+                if any(~isfinite(x)) || ~any(x~=0), valid(i)=false; else, F(i,:)=x; end
+            catch
+                valid(i)=false;
             end
         end
-        
-        svm = fitcsvm(X_train_norm, Y_train, ...
-            'KernelFunction', 'rbf', ...
-            'BoxConstraint', best_C, ...
-            'KernelScale', best_g);
-        Y_pred = predict(svm, X_test_norm);
-        
-        acc = sum(Y_pred == Y_test) / length(Y_test);
-        all_accuracies(w) = acc;
-        
-        results(w).wavelet = wavelet;
-        results(w).accuracy = acc;
-        results(w).best_C = best_C;
-        results(w).best_gamma = best_g;
-        
-        fprintf('  Accuracy: %.2f%% (C=%.3f, gamma=%.4f)\n', ...
-            acc * 100, best_C, best_g);
-    end
-    
-    % Display
-    fprintf('\n========================================\n');
-    fprintf('WAVELET COMPARISON RESULTS (v4)\n');
-    fprintf('========================================\n');
-    fprintf('%-12s | %-10s\n', 'Wavelet', 'Accuracy');
-    fprintf('-------------------------------\n');
-    
-    for w = 1:num_wavelets
-        fprintf('%-12s | %-9.2f%%\n', ...
-            results(w).wavelet, results(w).accuracy * 100);
-    end
-    
-    [best_acc, best_idx] = max(all_accuracies);
-    fprintf('\n>>> BEST WAVELET: %s (%.2f%%) <<<\n', ...
-        results(best_idx).wavelet, best_acc * 100);
-    
-    % Export
-    wavelet_names = cell(num_wavelets, 1);
-    accuracy_values = zeros(num_wavelets, 1);
-    for w = 1:num_wavelets
-        wavelet_names{w} = results(w).wavelet;
-        accuracy_values(w) = results(w).accuracy * 100;
-    end
-    
-    excel_data = [wavelet_names, num2cell(accuracy_values)];
-    excel_header = {'Wavelet', 'Accuracy_Percent'};
-    excel_data_with_header = [excel_header; excel_data];
-    
-    try
-        xlswrite('../results/wavelet_comparison.xls', excel_data_with_header);
-        fprintf('\nSaved Excel file\n');
-    catch
-        fid = fopen('../results/wavelet_comparison.csv', 'w');
-        fprintf(fid, '%s,%s\n', excel_header{:});
-        for w = 1:num_wavelets
-            fprintf(fid, '%s,%.2f\n', wavelet_names{w}, accuracy_values(w));
+        dev=find(is_dev & valid); tst=find(is_test & valid);
+        Xd=F(dev,:); Yd=labels(dev); Xt=F(tst,:); Yt=labels(tst);
+        mu=mean(Xd,1); sd=std(Xd,0,1); sd(sd==0)=1;
+        Xd=bsxfun(@rdivide,bsxfun(@minus,Xd,mu),sd);
+        Xt=bsxfun(@rdivide,bsxfun(@minus,Xt,mu),sd);
+        rng(42); cvp=cvpartition(Yd,'KFold',5);
+        best=-inf; bc=1; bs=1;
+        for ci=1:numel(C_values)
+            for si=1:numel(scale_values)
+                m=fitcsvm(Xd,Yd,'KernelFunction','rbf','BoxConstraint',C_values(ci), ...
+                    'KernelScale',scale_values(si),'Standardize',false);
+                a=1-kfoldLoss(crossval(m,'CVPartition',cvp));
+                if a>best, best=a; bc=C_values(ci); bs=scale_values(si); end
+            end
         end
-        fclose(fid);
+        m=fitcsvm(Xd,Yd,'KernelFunction','rbf','BoxConstraint',bc,'KernelScale',bs,'Standardize',false);
+        [yp,score]=predict(m,Xt);
+        acc=mean(yp==Yt);
+        TP=sum(yp==1 & Yt==1); FP=sum(yp==1 & Yt==0); FN=sum(yp==0 & Yt==1);
+        precision=TP/max(TP+FP,1); recall=TP/max(TP+FN,1);
+        f1=2*precision*recall/max(precision+recall,eps);
+        [~,~,~,auc]=perfcurve(Yt,score(:,2),1);
+        results(w)=struct('wavelet',wavelets{w},'accuracy',acc,'precision',precision, ...
+            'recall',recall,'f1',f1,'auc',auc,'best_C',bc,'best_KernelScale',bs, ...
+            'cv_accuracy',best,'n_dev',numel(Yd),'n_test',numel(Yt));
+        fprintf('%s: CV %.2f%%; TEST acc %.2f%% F1 %.4f AUC %.4f\n',wavelets{w},100*best,100*acc,f1,auc);
     end
-    
-    save('../results/wavelet_comparison.mat', 'results');
-    fprintf('Saved ../results/wavelet_comparison.mat\n');
-    
+    save('../results/wavelet_comparison.mat','results');
+    fid=fopen('../results/wavelet_comparison.csv','w');
+    fprintf(fid,'Wavelet,Accuracy,Precision,Recall,F1,AUC,C,KernelScale,CV_Accuracy,N_Dev,N_Test\n');
+    for w=1:numel(results)
+        r=results(w); fprintf(fid,'%s,%.6f,%.6f,%.6f,%.6f,%.6f,%g,%g,%.6f,%d,%d\n', ...
+            r.wavelet,r.accuracy,r.precision,r.recall,r.f1,r.auc,r.best_C,r.best_KernelScale,r.cv_accuracy,r.n_dev,r.n_test);
+    end
+    fclose(fid);
 end
+function names=read_split(path)
+    fid=fopen(path,'r'); if fid<0,error('Cannot open %s',path);end
+    C=textscan(fid,'%s'); fclose(fid); names=C{1};
+end
+function id=file_id(path), [~,id,~]=fileparts(path); end

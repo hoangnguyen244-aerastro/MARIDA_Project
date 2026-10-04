@@ -32,11 +32,9 @@ function step6_benchmark()
     % ========== 2. LOAD MODEL AND DATA ==========
     fprintf('\n[2/3] Loading model and data...\n');
     
-    load(model_file, 'final_svm', 'mu', 'sigma');
-    load('../data/file_lists.mat', 'normal_files', 'anomaly_files');
-    
-    num_test = min(10, length(normal_files));
-    test_files = [normal_files(1:num_test); anomaly_files(1:num_test)];
+    load(model_file, 'final_svm', 'mu', 'sigma', 'test_idx');
+    load('../data/features_data.mat', 'valid_files');
+    test_files = valid_files(test_idx);
     num_images = length(test_files);
     
     fprintf('  Using %d images for timing\n', num_images);
@@ -52,6 +50,7 @@ function step6_benchmark()
         
         t_start = tic;
         features = wavelet_feature_extractor(img_path, wavelet_name);
+        features = sign(features) .* log1p(abs(features));
         features_norm = (features - mu) ./ sigma;
         features_norm(isnan(features_norm)) = 0;
         label = predict(final_svm, features_norm);

@@ -85,9 +85,11 @@ function plot_results()
     
     if exist('../data/features_data.mat', 'file')
         load('../data/features_data.mat', 'all_features', 'all_labels');
-        
-        normal_mean = mean(all_features(all_labels == 0, :), 1);
-        anomaly_mean = mean(all_features(all_labels == 1, :), 1);
+        load('../models/svm_model.mat', 'dev_idx');
+        dev_features = all_features(dev_idx, :);
+        dev_labels = all_labels(dev_idx);
+        normal_mean = mean(dev_features(dev_labels == 0, :), 1);
+        anomaly_mean = mean(dev_features(dev_labels == 1, :), 1);
         mean_diff = abs(normal_mean - anomaly_mean);
         mean_diff_pct = 100 * mean_diff / max(mean_diff);
         
@@ -99,8 +101,8 @@ function plot_results()
         bar(top10_values, 'FaceColor', [0.8, 0.4, 0.2], 'EdgeColor', 'k');
         
         xlabel('Feature Index', 'FontSize', 12);
-        ylabel('Discriminative Power (%)', 'FontSize', 12);
-        title('Top 10 Most Discriminative Features', 'FontSize', 14);
+        ylabel('Normalized Mean Difference (%)', 'FontSize', 12);
+        title('Top 10 Development-Set Mean Differences', 'FontSize', 14);
         set(gca, 'XTick', 1:length(top10_idx));
         set(gca, 'XTickLabel', cellstr(num2str(top10_idx')));
         grid on;
@@ -118,7 +120,7 @@ function plot_results()
         load('../models/svm_model.mat', 'final_svm', 'mu', 'sigma', 'test_idx');
         load('../data/features_data.mat', 'all_features', 'all_labels');
         
-        % ? CH? DÙNG TEST SET ?
+        % ? CH? DÃ™NG TEST SET ?
         X_test = all_features(test_idx, :);
         Y_test = all_labels(test_idx);
         

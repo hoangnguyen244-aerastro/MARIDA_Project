@@ -68,4 +68,9 @@ end
 
 function id=file_id(path)
     [~,id,~]=fileparts(path);
+    % MARIDA image files are named S2_<split-id>.tif, whereas the official
+    % split text files store <split-id> without the leading "S2_".
+    if length(id) >= 3 && strcmp(id(1:3),'S2_')
+        id=id(4:end);
+    end
 end

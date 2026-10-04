@@ -33,7 +33,7 @@ function plot_results()
         set(gca, 'XTickLabel', wavelet_names, 'FontSize', 11);
         xlabel('Wavelet Family', 'FontSize', 12);
         ylabel('Accuracy (%)', 'FontSize', 12);
-        title('Wavelet Comparison for Anomaly Detection', 'FontSize', 14);
+        title('Held-out Test Accuracy by Wavelet', 'FontSize', 14);
         ylim([0, 100]);
         grid on;
         
@@ -120,13 +120,13 @@ function plot_results()
         load('../models/svm_model.mat', 'final_svm', 'mu', 'sigma', 'test_idx');
         load('../data/features_data.mat', 'all_features', 'all_labels');
         
-        % ? CH? DÙNG TEST SET ?
+        % Held-out official test set only.
         X_test = all_features(test_idx, :);
         Y_test = all_labels(test_idx);
         
         X_test_norm = bsxfun(@minus, X_test, mu);
         X_test_norm = bsxfun(@rdivide, X_test_norm, sigma);
-        X_test_norm(isnan(X_test_norm)) = 0;
+        X_test_norm(~isfinite(X_test_norm)) = 0;
         
         [~, score] = predict(final_svm, X_test_norm);
         

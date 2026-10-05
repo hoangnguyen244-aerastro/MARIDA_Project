@@ -1,8 +1,7 @@
 %% step9_final_locked_test.m
 % FINAL locked evaluation on the official MARIDA test set.
-% Configuration was selected using development data only:
-% Red 665 nm (channel 4), db4, 18 DWT statistics, RBF-SVM C=10,
-% KernelScale=1. No model/representation selection is performed here.
+% Representation and SVM hyperparameters are read from development-only
+% Step 8/8B outputs. No model/representation selection is performed here.
 % MATLAB R2015b compatible.
 
 function step9_final_locked_test()
@@ -12,15 +11,19 @@ function step9_final_locked_test()
 
     load('../data/features_data.mat','all_labels','valid_files');
     load('../models/svm_model.mat','dev_idx','test_idx');
+    T=load('../results/spectral_tiebreak_dev.mat','selected');
+    S=load('../results/spectral_ablation_dev.mat','out');
+    representation=T.selected;
 
-    C=10; scale=1;
-    fprintf('LOCKED: Red 665 nm | db4 | 18-D | RBF-SVM C=%g KernelScale=%g\n',C,scale);
+    names={S.out.representation}; k=find(strcmp(names,representation),1);
+    if isempty(k), error('Locked representation not found in Step-8 results.'); end
+    C=S.out(k).svm_C; scale=S.out(k).svm_KernelScale;
+    fprintf('LOCKED: %s | db4 | %d-D | RBF-SVM C=%g KernelScale=%g\n', ...
+        representation,S.out(k).dimensions,C,scale);
 
-    [Xdev,Ydev,dev_files]=extract_set(valid_files(dev_idx),all_labels(dev_idx));
-    [Xtest,Ytest,test_files]=extract_set(valid_files(test_idx),all_labels(test_idx));
-
-    Xdev=sign(Xdev).*log1p(abs(Xdev));
-    Xtest=sign(Xtest).*log1p(abs(Xtest));
+    [Xdev,Ydev,dev_files]=extract_set(valid_files(dev_idx),all_labels(dev_idx),representation);
+    [Xtest,Ytest,test_files]=extract_set(valid_files(test_idx),all_labels(test_idx),representation);
+    Xdev=sign(Xdev).*log1p(abs(Xdev)); Xtest=sign(Xtest).*log1p(abs(Xtest));
 
     mu=mean(Xdev,1); sigma=std(Xdev,0,1); sigma(sigma==0)=1;
     A=bsxfun(@rdivide,bsxfun(@minus,Xdev,mu),sigma);
@@ -33,53 +36,60 @@ function step9_final_locked_test()
 
     TN=sum((Ytest==0)&(pred==0)); FP=sum((Ytest==0)&(pred==1));
     FN=sum((Ytest==1)&(pred==0)); TP=sum((Ytest==1)&(pred==1));
-    accuracy=(TP+TN)/numel(Ytest);
-    precision=safe_div(TP,TP+FP);
-    recall=safe_div(TP,TP+FN);
-    specificity=safe_div(TN,TN+FP);
+    accuracy=(TP+TN)/numel(Ytest); precision=safe_div(TP,TP+FP);
+    recall=safe_div(TP,TP+FN); specificity=safe_div(TN,TN+FP);
     f1=safe_div(2*precision*recall,precision+recall);
     balanced_accuracy=(recall+specificity)/2;
 
     auc=NaN; fpr=[]; tpr=[];
-    try
-        [fpr,tpr,~,auc]=perfcurve(Ytest,score(:,2),1);
-    catch
+    poscol=find(final_model.ClassNames==1,1);
+    if ~isempty(poscol)
+        try, [fpr,tpr,~,auc]=perfcurve(Ytest,score(:,poscol),1); catch, end
     end
 
-    fprintf('\nOfficial test samples used: %d\n',numel(Ytest));
+    n_test=numel(Ytest); test_normal=sum(Ytest==0); test_anomaly=sum(Ytest==1);
+    n_dev=numel(Ydev); dev_normal=sum(Ydev==0); dev_anomaly=sum(Ydev==1);
+    fprintf('\nDevelopment: N=%d | Normal=%d | Anomaly=%d\n',n_dev,dev_normal,dev_anomaly);
+    fprintf('Official test: N=%d | Normal=%d | Anomaly=%d\n',n_test,test_normal,test_anomaly);
     fprintf('Confusion: TN=%d FP=%d FN=%d TP=%d\n',TN,FP,FN,TP);
-    fprintf('Accuracy:          %.2f%%\n',100*accuracy);
-    fprintf('Balanced accuracy: %.2f%%\n',100*balanced_accuracy);
-    fprintf('Precision:         %.4f\n',precision);
-    fprintf('Recall:            %.4f\n',recall);
-    fprintf('Specificity:       %.4f\n',specificity);
-    fprintf('F1:                %.4f\n',f1);
-    fprintf('AUC:               %.4f\n',auc);
+    fprintf('Accuracy: %.2f%% | Balanced accuracy: %.2f%%\n',100*accuracy,100*balanced_accuracy);
+    fprintf('Precision: %.4f | Recall: %.4f | Specificity: %.4f | F1: %.4f | AUC: %.4f\n', ...
+        precision,recall,specificity,f1,auc);
 
-    save('../results/final_locked_test.mat','accuracy','balanced_accuracy','precision', ...
-        'recall','specificity','f1','auc','TN','FP','FN','TP','fpr','tpr', ...
-        'Ytest','pred','score','test_files','dev_files','mu','sigma','C','scale');
+    save('../results/final_locked_test.mat','representation','accuracy','balanced_accuracy', ...
+        'precision','recall','specificity','f1','auc','TN','FP','FN','TP','fpr','tpr', ...
+        'Ytest','pred','score','test_files','dev_files','mu','sigma','C','scale', ...
+        'n_dev','dev_normal','dev_anomaly','n_test','test_normal','test_anomaly');
 
     fid=fopen('../results/final_locked_test.csv','w');
-    fprintf(fid,'Representation,Wavelet,Dimensions,Classifier,C,KernelScale,N_Test,TN,FP,FN,TP,Accuracy,Balanced_Accuracy,Precision,Recall,Specificity,F1,AUC\n');
-    fprintf(fid,'red_665,db4,18,RBF-SVM,%g,%g,%d,%d,%d,%d,%d,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f\n', ...
-        C,scale,numel(Ytest),TN,FP,FN,TP,accuracy,balanced_accuracy,precision,recall,specificity,f1,auc);
+    fprintf(fid,'Representation,Wavelet,Dimensions,Classifier,C,KernelScale,N_Dev,Dev_Normal,Dev_Anomaly,N_Test,Test_Normal,Test_Anomaly,TN,FP,FN,TP,Accuracy,Balanced_Accuracy,Precision,Recall,Specificity,F1,AUC\n');
+    fprintf(fid,'%s,db4,%d,RBF-SVM,%g,%g,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f\n', ...
+        representation,S.out(k).dimensions,C,scale,n_dev,dev_normal,dev_anomaly,n_test,test_normal,test_anomaly, ...
+        TN,FP,FN,TP,accuracy,balanced_accuracy,precision,recall,specificity,f1,auc);
     fclose(fid);
 
-    save('../models/final_locked_red665_svm.mat','final_model','mu','sigma','C','scale');
-    fprintf('\nSaved final test results and locked deployment model.\n');
+    save('../models/final_locked_svm.mat','final_model','mu','sigma','C','scale','representation');
+    fprintf('\nSaved final official-test results and locked deployment model.\n');
 end
 
-function [X,Y,files_out]=extract_set(files,Yin)
-    X=zeros(numel(files),18); valid=true(numel(files),1);
+function [X,Y,files_out]=extract_set(files,Yin,rep)
+    if strcmp(rep,'red_nir_swir1_54d'), dim=54; else dim=18; end
+    X=zeros(numel(files),dim); valid=true(numel(files),1);
     for i=1:numel(files)
         try
             I=double(imread(files{i}));
             if ndims(I)~=3 || size(I,3)~=11, error('Expected 11-band MARIDA TIFF'); end
-            X(i,:)=dwt18(I(:,:,4),'db4');
+            switch rep
+                case 'legacy_wrong_rgb', J=.2989*I(:,:,1)+.5870*I(:,:,2)+.1140*I(:,:,3); X(i,:)=dwt18(J,'db4');
+                case 'true_rgb_gray', J=.2989*I(:,:,4)+.5870*I(:,:,3)+.1140*I(:,:,2); X(i,:)=dwt18(J,'db4');
+                case 'red_665', X(i,:)=dwt18(I(:,:,4),'db4');
+                case 'nir_842', X(i,:)=dwt18(I(:,:,8),'db4');
+                case 'swir1_1600', X(i,:)=dwt18(I(:,:,10),'db4');
+                case 'red_nir_swir1_54d', X(i,:)=[dwt18(I(:,:,4),'db4') dwt18(I(:,:,8),'db4') dwt18(I(:,:,10),'db4')];
+                otherwise, error('Unknown locked representation');
+            end
             if any(~isfinite(X(i,:))), valid(i)=false; end
-        catch
-            valid(i)=false;
+        catch, valid(i)=false;
         end
     end
     X=X(valid,:); Y=Yin(valid); files_out=files(valid);
@@ -87,8 +97,7 @@ function [X,Y,files_out]=extract_set(files,Yin)
 end
 
 function f=dwt18(J,w)
-    [C,S]=wavedec2(J,2,w);
-    [H1,V1,D1]=detcoef2('all',C,S,1); [H2,V2,D2]=detcoef2('all',C,S,2);
+    [C,S]=wavedec2(J,2,w); [H1,V1,D1]=detcoef2('all',C,S,1); [H2,V2,D2]=detcoef2('all',C,S,2);
     cc={H1,V1,D1,H2,V2,D2}; f=zeros(1,18); z=1;
     for k=1:6
         v=cc{k}(:); e=sum(v.^2); den=sum(abs(v));

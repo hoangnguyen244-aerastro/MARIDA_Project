@@ -1,0 +1,4 @@
+Representation,Valid_Dev,Dev_Normal,Dev_Anomaly,Mean_Accuracy,Std_Accuracy,Min_Accuracy,Max_Accuracy,C,KernelScale,Repeats,Folds
+red_665,715,328,387,0.768042,0.004829,0.759441,0.780420,10,1,20,5
+nir_842,715,328,387,0.782448,0.005103,0.772028,0.795804,10,1,20,5
+SELECTED,nir_842,,,,,,,,,,

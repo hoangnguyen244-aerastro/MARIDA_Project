@@ -1,0 +1,7 @@
+Representation,Dimensions,Valid_Dev,Dev_Normal,Dev_Anomaly,SVM_CV_Accuracy,SVM_C,SVM_KernelScale,kNN_CV_Accuracy,kNN_k
+legacy_wrong_rgb,18,715,328,387,0.725874,100,1,0.755245,7
+true_rgb_gray,18,715,328,387,0.756643,1,1,0.760839,15
+red_665,18,715,328,387,0.772028,10,1,0.763636,3
+nir_842,18,715,328,387,0.770629,10,1,0.756643,7
+swir1_1600,18,714,328,387,0.652661,1,1,0.659664,5
+red_nir_swir1_54d,54,714,328,387,0.732493,10,1,0.752101,9

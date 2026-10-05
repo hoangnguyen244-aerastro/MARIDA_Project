@@ -1,0 +1,2 @@
+Representation,Wavelet,Model_Size_KB,Mean_ms,Std_ms,Min_ms,Max_ms,FPS,N_Images
+nir_842,db4,182.457,13.951523,0.752260,13.141100,17.930200,71.676761,257

@@ -1,0 +1,5 @@
+Model,CV_Accuracy,Setting
+RBF-SVM,0.770629,C=10; KernelScale=1
+Linear-SVM,0.615385,C=10
+k-NN,0.756643,k=7
+Decision-Tree,0.734266,MinLeafSize=10

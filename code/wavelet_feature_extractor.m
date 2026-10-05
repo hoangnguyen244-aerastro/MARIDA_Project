@@ -7,9 +7,11 @@ function features = wavelet_feature_extractor(img_path, wavelet_name)
     % Read image
     I = imread(img_path);
     
-    % Convert to grayscale if RGB
+    % Convert MARIDA multispectral TIFF to physically correct true-colour grayscale
     if ndims(I) == 3
-        I = 0.2989 * I(:,:,1) + 0.5870 * I(:,:,2) + 0.1140 * I(:,:,3);
+        if size(I,3) ~= 11, error('Expected 11-band MARIDA TIFF.'); end
+        % Physical true-colour grayscale: R=665 nm (ch4), G=560 nm (ch3), B=490 nm (ch2).
+        I = 0.2989 * double(I(:,:,4)) + 0.5870 * double(I(:,:,3)) + 0.1140 * double(I(:,:,2));
     end
     
     I = im2double(I);
@@ -24,7 +26,7 @@ function features = wavelet_feature_extractor(img_path, wavelet_name)
     % 6 coefficient matrices
     coeff_cells = {H1, V1, D1, H2, V2, D2};
     
-    % ??? 18 features (6 matrices × 3 features) ???
+    % ??? 18 features (6 matrices Ã— 3 features) ???
     features = zeros(1, 18);
     feat_idx = 1;
     

@@ -1,56 +1,19 @@
 %% run_all.m
-% Master script - Wavelet-SVM Anomaly Detection (v4 - 18 features)
-% Compatible with MATLAB R2015b
-
+% SAFE DEVELOPMENT PIPELINE. Official test is intentionally NOT evaluated.
+% Run step9_final_locked_test ONLY once after development selection is locked.
 function run_all()
-    
-    fprintf('\n');
-    fprintf('========================================================\n');
-    fprintf('   WAVELET-SVM ANOMALY DETECTION - FINAL PIPELINE      \n');
-    fprintf('              (18 features, 880 samples)                \n');
-    fprintf('========================================================\n');
-    
-    tic;
-    
-    % Step 1: Filter data (FULL MARIDA)
-    step1_filter_data();
-    if ~exist('../data/file_lists.mat', 'file')
-        fprintf('\nERROR: Pipeline stopped at Step 1\n');
-        return;
-    end
-    
-    % Step 2: Extract 18 wavelet features
-    step2_extract_features();
-    if ~exist('../data/features_data.mat', 'file')
-        fprintf('\nERROR: Pipeline stopped at Step 2\n');
-        return;
-    end
-    
-    % Step 3: Train SVM
-    step3_train_svm();
-    if ~exist('../models/svm_model.mat', 'file')
-        fprintf('\nERROR: Pipeline stopped at Step 3\n');
-        return;
-    end
-    
-    % Step 4: Evaluate (TEST SET ONLY)
-    step4_evaluate();
-    
-    % Step 5: Compare wavelets
-    step5_compare_wavelets();
-    
-    % Step 6: Benchmark
-    step6_benchmark();
-    
-    % Plot results
-    plot_results();
-    
-    elapsed_time = toc;
-    
-    fprintf('\n========================================================\n');
-    fprintf('PIPELINE COMPLETED SUCCESSFULLY!\n');
-    fprintf('Total execution time: %.2f seconds (%.2f minutes)\n', ...
-        elapsed_time, elapsed_time/60);
-    fprintf('========================================================\n');
-    
+fprintf('\n========================================================\n');
+fprintf(' MARIDA DEVELOPMENT PIPELINE - TEST SET SEALED\n');
+fprintf('========================================================\n');
+tic;
+step1_filter_data();
+if ~exist('../data/file_lists.mat','file'), error('Step 1 failed.'); end
+step2_extract_features();
+if ~exist('../data/features_data.mat','file'), error('Step 2 failed.'); end
+step3_train_svm();
+if ~exist('../models/svm_model.mat','file'), error('Step 3 failed.'); end
+fprintf('\nDevelopment preparation complete.\n');
+fprintf('Next: run step8_spectral_ablation_dev, then step8b_tiebreak_red_nir_dev.\n');
+fprintf('DO NOT run Step 9 unless the development configuration is locked.\n');
+fprintf('Elapsed %.2f s.\n',toc);
 end

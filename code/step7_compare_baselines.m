@@ -1,86 +1,54 @@
 %% step7_compare_baselines.m
-% Classifier baselines on the SAME db4 18-D representation and official split.
-% Hyperparameters are selected on development data only; test is evaluated once.
+% DEVELOPMENT-ONLY classifier comparison on the locked NIR-842/db4/18-D representation.
+% No official-test labels or predictions are accessed here.
 % MATLAB R2015b compatible.
-
 function step7_compare_baselines()
-    fprintf('\n========================================\n');
-    fprintf('STEP 7: Lightweight classifier baselines\n');
-    fprintf('========================================\n');
-
-    load('../data/features_data.mat','all_features','all_labels');
-    load('../models/svm_model.mat','dev_idx','test_idx','mu','sigma','best_C','best_scale');
-
-    Xd=all_features(dev_idx,:); Yd=all_labels(dev_idx);
-    Xt=all_features(test_idx,:); Yt=all_labels(test_idx);
-    Xd=bsxfun(@rdivide,bsxfun(@minus,Xd,mu),sigma);
-    Xt=bsxfun(@rdivide,bsxfun(@minus,Xt,mu),sigma);
-    Xd(~isfinite(Xd))=0; Xt(~isfinite(Xt))=0;
-
-    names={'RBF-SVM','Linear-SVM','k-NN','Decision-Tree'};
-    n=numel(names);
-    out=repmat(struct('model','','cv_accuracy',NaN,'accuracy',NaN,'precision',NaN, ...
-        'recall',NaN,'f1',NaN,'auc',NaN,'setting',''),1,n);
-    rng(42); cvp=cvpartition(Yd,'KFold',5);
-
-    % 1) Main RBF-SVM: use parameters already selected in Step 3.
-    m=fitcsvm(Xd,Yd,'KernelFunction','rbf','BoxConstraint',best_C, ...
-        'KernelScale',best_scale,'Standardize',false);
-    cvacc=1-kfoldLoss(crossval(m,'CVPartition',cvp));
-    out(1)=evaluate_model(m,Xt,Yt,names{1},cvacc,sprintf('C=%g; KernelScale=%g',best_C,best_scale));
-
-    % 2) Linear SVM: tune C on development CV.
-    Cvals=[0.1 1 10 100]; best=-inf; bc=Cvals(1);
-    for k=1:numel(Cvals)
-        q=fitcsvm(Xd,Yd,'KernelFunction','linear','BoxConstraint',Cvals(k),'Standardize',false);
-        a=1-kfoldLoss(crossval(q,'CVPartition',cvp));
-        if a>best, best=a; bc=Cvals(k); end
-    end
-    m=fitcsvm(Xd,Yd,'KernelFunction','linear','BoxConstraint',bc,'Standardize',false);
-    out(2)=evaluate_model(m,Xt,Yt,names{2},best,sprintf('C=%g',bc));
-
-    % 3) k-NN: tune odd k values on development CV.
-    kvals=[1 3 5 7 9 15]; best=-inf; bk=kvals(1);
-    for k=1:numel(kvals)
-        q=fitcknn(Xd,Yd,'NumNeighbors',kvals(k),'Standardize',false);
-        a=1-kfoldLoss(crossval(q,'CVPartition',cvp));
-        if a>best, best=a; bk=kvals(k); end
-    end
-    m=fitcknn(Xd,Yd,'NumNeighbors',bk,'Standardize',false);
-    out(3)=evaluate_model(m,Xt,Yt,names{3},best,sprintf('k=%d',bk));
-
-    % 4) Single decision tree: tune minimum leaf size on development CV.
-    leaves=[1 5 10 20 40]; best=-inf; bl=leaves(1);
-    for k=1:numel(leaves)
-        q=fitctree(Xd,Yd,'MinLeafSize',leaves(k));
-        a=1-kfoldLoss(crossval(q,'CVPartition',cvp));
-        if a>best, best=a; bl=leaves(k); end
-    end
-    m=fitctree(Xd,Yd,'MinLeafSize',bl);
-    out(4)=evaluate_model(m,Xt,Yt,names{4},best,sprintf('MinLeafSize=%d',bl));
-
-    if ~exist('../results','dir'), mkdir('../results'); end
-    save('../results/baseline_comparison.mat','out');
-    fid=fopen('../results/baseline_comparison.csv','w');
-    fprintf(fid,'Model,CV_Accuracy,Test_Accuracy,Precision,Recall,F1,AUC,Setting\n');
-    for i=1:n
-        r=out(i); fprintf(fid,'%s,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%s\n', ...
-            r.model,r.cv_accuracy,r.accuracy,r.precision,r.recall,r.f1,r.auc,r.setting);
-        fprintf('%s: CV %.2f%% | TEST acc %.2f%% | F1 %.4f | AUC %.4f | %s\n', ...
-            r.model,100*r.cv_accuracy,100*r.accuracy,r.f1,r.auc,r.setting);
-    end
-    fclose(fid);
+fprintf('\nSTEP 7: NIR-842 CLASSIFIER BASELINES - DEVELOPMENT CV ONLY\n');
+load('../data/features_data.mat','all_labels','valid_files');
+load('../models/svm_model.mat','dev_idx');
+S=load('../results/spectral_ablation_dev.mat','out');
+T=load('../results/spectral_tiebreak_dev.mat','selected');
+rep=T.selected; names8={S.out.representation}; z=find(strcmp(names8,rep),1);
+if isempty(z), error('Locked representation missing from Step 8.'); end
+Cmain=S.out(z).svm_C; scale=S.out(z).svm_KernelScale;
+if ~strcmp(rep,'nir_842'), error('This finalized baseline script expects locked NIR-842.'); end
+Y=all_labels(dev_idx); files=valid_files(dev_idx);
+X=zeros(numel(files),18); valid=true(numel(files),1);
+for i=1:numel(files)
+ try
+  I=double(imread(files{i})); X(i,:)=dwt18(I(:,:,8),'db4');
+  if any(~isfinite(X(i,:))), valid(i)=false; end
+ catch, valid(i)=false;
+ end
 end
-
-function r=evaluate_model(m,X,Y,name,cvacc,setting)
-    [yp,s]=predict(m,X);
-    TP=sum(yp==1 & Y==1); FP=sum(yp==1 & Y==0); FN=sum(yp==0 & Y==1); TN=sum(yp==0 & Y==0);
-    acc=(TP+TN)/numel(Y); p=TP/max(TP+FP,1); rec=TP/max(TP+FN,1);
-    f=2*p*rec/max(p+rec,eps);
-    auc=NaN;
-    if size(s,2)>=2
-        [~,~,~,auc]=perfcurve(Y,s(:,2),1);
-    end
-    r=struct('model',name,'cv_accuracy',cvacc,'accuracy',acc,'precision',p, ...
-        'recall',rec,'f1',f,'auc',auc,'setting',setting);
+X=X(valid,:); Y=Y(valid); X=sign(X).*log1p(abs(X));
+rng(42); cvp=cvpartition(Y,'KFold',5);
+models={'RBF-SVM','Linear-SVM','k-NN','Decision-Tree'};
+out=repmat(struct('model','','cv_accuracy',NaN,'setting',''),1,4);
+out(1)=struct('model',models{1},'cv_accuracy',cv_svm(X,Y,cvp,'rbf',Cmain,scale),'setting',sprintf('C=%g; KernelScale=%g',Cmain,scale));
+Cvals=[.1 1 10 100]; best=-inf; bc=Cvals(1);
+for i=1:numel(Cvals), a=cv_svm(X,Y,cvp,'linear',Cvals(i),1); if a>best,best=a;bc=Cvals(i);end,end
+out(2)=struct('model',models{2},'cv_accuracy',best,'setting',sprintf('C=%g',bc));
+kvals=[1 3 5 7 9 15]; best=-inf; bk=kvals(1);
+for i=1:numel(kvals), a=cv_knn(X,Y,cvp,kvals(i)); if a>best,best=a;bk=kvals(i);end,end
+out(3)=struct('model',models{3},'cv_accuracy',best,'setting',sprintf('k=%d',bk));
+leaves=[1 5 10 20 40]; best=-inf; bl=leaves(1);
+for i=1:numel(leaves), a=cv_tree(X,Y,cvp,leaves(i)); if a>best,best=a;bl=leaves(i);end,end
+out(4)=struct('model',models{4},'cv_accuracy',best,'setting',sprintf('MinLeafSize=%d',bl));
+save('../results/baseline_comparison_dev.mat','out','rep');
+fid=fopen('../results/baseline_comparison_dev.csv','w'); fprintf(fid,'Model,CV_Accuracy,Setting\n');
+for i=1:4, fprintf(fid,'%s,%.6f,%s\n',out(i).model,out(i).cv_accuracy,out(i).setting); fprintf('%s: %.2f%% | %s\n',out(i).model,100*out(i).cv_accuracy,out(i).setting); end
+fclose(fid); fprintf('No official test data were evaluated.\n');
+end
+function a=cv_svm(X,Y,cvp,kern,C,scale)
+p=zeros(size(Y)); for f=1:cvp.NumTestSets, tr=training(cvp,f);va=test(cvp,f);[A,B]=normfold(X,tr,va); args={'KernelFunction',kern,'BoxConstraint',C,'Standardize',false}; if strcmp(kern,'rbf'),args=[args {'KernelScale',scale}];end;m=fitcsvm(A,Y(tr),args{:});p(va)=predict(m,B);end;a=mean(p==Y); end
+function a=cv_knn(X,Y,cvp,k)
+p=zeros(size(Y));for f=1:cvp.NumTestSets,tr=training(cvp,f);va=test(cvp,f);[A,B]=normfold(X,tr,va);m=fitcknn(A,Y(tr),'NumNeighbors',k,'Standardize',false);p(va)=predict(m,B);end;a=mean(p==Y);end
+function a=cv_tree(X,Y,cvp,l)
+p=zeros(size(Y));for f=1:cvp.NumTestSets,tr=training(cvp,f);va=test(cvp,f);[A,B]=normfold(X,tr,va);m=fitctree(A,Y(tr),'MinLeafSize',l);p(va)=predict(m,B);end;a=mean(p==Y);end
+function [A,B]=normfold(X,tr,va)
+mu=mean(X(tr,:),1);s=std(X(tr,:),0,1);s(s==0)=1;A=bsxfun(@rdivide,bsxfun(@minus,X(tr,:),mu),s);B=bsxfun(@rdivide,bsxfun(@minus,X(va,:),mu),s);A(~isfinite(A))=0;B(~isfinite(B))=0;end
+function f=dwt18(J,w)
+[C,S]=wavedec2(J,2,w);[H1,V1,D1]=detcoef2('all',C,S,1);[H2,V2,D2]=detcoef2('all',C,S,2);cc={H1,V1,D1,H2,V2,D2};f=zeros(1,18);z=1;
+for k=1:6,v=cc{k}(:);e=sum(v.^2);den=sum(abs(v));if den==0,ent=0;else,p=abs(v)/den;p(p==0)=[];ent=-sum(p.*log2(p));end;s=std(v);if numel(v)<3||s==0,sk=0;else,sk=(sum((v-mean(v)).^3)/numel(v))/(s^3);end;f(z:z+2)=[e ent sk];z=z+3;end
 end

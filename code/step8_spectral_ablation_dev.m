@@ -23,6 +23,9 @@ function step8_spectral_ablation_dev()
 
     Y=all_labels(dev_idx);
     files=valid_files(dev_idx);
+    n_dev=numel(Y); n_normal=sum(Y==0); n_anomaly=sum(Y==1);
+    fprintf('Natural development set: N=%d | Normal=%d | Anomaly=%d\n', ...
+        n_dev,n_normal,n_anomaly);
     Cvals=[0.1 1 10 100]; scales=[0.01 0.1 1 10]; kvals=[1 3 5 7 9 15];
 
     for r=1:nrep
@@ -62,13 +65,13 @@ function step8_spectral_ablation_dev()
     end
 
     if ~exist('../results','dir'), mkdir('../results'); end
-    save('../results/spectral_ablation_dev.mat','out');
+    save('../results/spectral_ablation_dev.mat','out','n_dev','n_normal','n_anomaly');
     fid=fopen('../results/spectral_ablation_dev.csv','w');
-    fprintf(fid,'Representation,Dimensions,Valid_Dev,SVM_CV_Accuracy,SVM_C,SVM_KernelScale,kNN_CV_Accuracy,kNN_k\n');
+    fprintf(fid,'Representation,Dimensions,Valid_Dev,Dev_Normal,Dev_Anomaly,SVM_CV_Accuracy,SVM_C,SVM_KernelScale,kNN_CV_Accuracy,kNN_k\n');
     for r=1:nrep
         q=out(r);
-        fprintf(fid,'%s,%d,%d,%.6f,%g,%g,%.6f,%d\n',q.representation,q.dimensions, ...
-            q.valid_dev,q.svm_cv_accuracy,q.svm_C,q.svm_KernelScale,q.knn_cv_accuracy,q.knn_k);
+        fprintf(fid,'%s,%d,%d,%d,%d,%.6f,%g,%g,%.6f,%d\n',q.representation,q.dimensions, ...
+            q.valid_dev,n_normal,n_anomaly,q.svm_cv_accuracy,q.svm_C,q.svm_KernelScale,q.knn_cv_accuracy,q.knn_k);
     end
     fclose(fid);
     fprintf('\nSaved development-only ablation results. DO NOT select using official test.\n');

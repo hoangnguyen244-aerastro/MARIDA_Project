@@ -1,0 +1,2 @@
+Representation,Wavelet,Dimensions,Classifier,C,KernelScale,N_Dev,Dev_Normal,Dev_Anomaly,N_Test,Test_Normal,Test_Anomaly,TN,FP,FN,TP,Accuracy,Balanced_Accuracy,Precision,Recall,Specificity,F1,AUC
+nir_842,db4,18,RBF-SVM,10,1,715,328,387,257,111,146,66,45,28,118,0.715953,0.701407,0.723926,0.808219,0.594595,0.763754,0.759102
